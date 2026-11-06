@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPTM Treasury Tracker - ระบบบัญชีสาขา</title>
+    <title>IPTM Treasury Tracker - ระบบบัญชีรายรับ-รายจ่ายสาขา</title>
     <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -11,7 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
 
     <!-- Header -->
     <header class="bg-indigo-700 text-white shadow-lg sticky top-0 z-30">
@@ -20,7 +20,7 @@
                 <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
                     <i class="fa-solid fa-wallet"></i> ระบบบัญชีสาขา IPTM
                 </h1>
-                <p class="text-xs text-indigo-200">ตรวจสอบความโปร่งใส 100% (เป้าหมาย 100 บาท/คน)</p>
+                <p class="text-xs text-indigo-200">ระบบรายรับ-รายจ่าย  (เป้าหมายเก็บ 100 บาท/คน)</p>
             </div>
             
             <div id="roleBadgeContainer">
@@ -39,40 +39,70 @@
 
     <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
 
-        <!-- Stat Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- สรุปยอดเงินต่างๆ (Stat Cards) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                 <div class="text-slate-500 text-sm font-medium">รายรับรวมทั้งหมด</div>
                 <div id="statTotalIncome" class="text-2xl font-bold text-emerald-600 mt-1">0 ฿</div>
+                <span id="statPaidCount" class="text-xs text-slate-400">จ่ายครบ 0 / 0 คน</span>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                <div class="text-slate-500 text-sm font-medium">จ่ายครบแล้ว (100฿)</div>
-                <div id="statPaidCount" class="text-2xl font-bold text-indigo-600 mt-1">0 / 0 คน</div>
+                <div class="text-slate-500 text-sm font-medium">รายจ่ายรวมทั้งหมด</div>
+                <div id="statTotalExpense" class="text-2xl font-bold text-rose-600 mt-1">0 ฿</div>
+                <span id="statExpenseCount" class="text-xs text-slate-400">0 รายการ</span>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 bg-indigo-50/50">
+                <div class="text-indigo-900 text-sm font-bold">เงินคงเหลือในบัญชี</div>
+                <div id="statBalance" class="text-2xl font-extrabold text-indigo-600 mt-1">0 ฿</div>
+                <span class="text-xs text-indigo-400">(รายรับ - รายจ่าย)</span>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                <div class="text-slate-500 text-sm font-medium">กำลังผ่อน (20฿/ด.) / ยังไม่จ่าย</div>
+                <div class="text-slate-500 text-sm font-medium">ค้างชำระ / กำลังผ่อน</div>
                 <div id="statPendingCount" class="text-2xl font-bold text-amber-500 mt-1">0 คน</div>
+                <span class="text-xs text-slate-400">เป้าหมาย 100฿/คน</span>
             </div>
         </div>
 
-        <!-- Admin Controls (ซ่อนเมื่อเป็น Visitor) -->
-        <div id="adminPanel" class="hidden bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm">
-            <h3 class="font-bold text-indigo-900 mb-3 flex items-center gap-2">
-                <i class="fa-solid fa-user-plus"></i> เพิ่มรายชื่อสมาชิกใหม่ (สำหรับ Admin)
-            </h3>
-            <form id="addMemberForm" onsubmit="handleAddMember(event)" class="flex gap-2 flex-col sm:flex-row">
-                <input type="text" id="newMemberName" placeholder="ชื่อ-นามสกุล สมาชิก..." required class="flex-1 px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2 rounded-xl transition">
-                    เพิ่มรายชื่อ
-                </button>
-            </form>
+        <!-- Admin Controls Panel -->
+        <div id="adminPanel" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- เพิ่มสมาชิก -->
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm space-y-2">
+                <h3 class="font-bold text-indigo-900 flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-user-plus"></i> เพิ่มรายชื่อสมาชิกใหม่
+                </h3>
+                <form id="addMemberForm" onsubmit="handleAddMember(event)" class="flex gap-2">
+                    <input type="text" id="newMemberName" placeholder="ชื่อสมาชิก (เช่น สมชาย หรือ สมชาย ตามสลิป)..." required class="flex-1 px-3 py-1.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-1.5 rounded-xl transition">
+                        เพิ่มรายชื่อ
+                    </button>
+                </form>
+            </div>
+
+            <!-- บันทึกรายจ่าย -->
+            <div class="bg-rose-50 border border-rose-100 p-4 rounded-2xl shadow-sm space-y-2">
+                <h3 class="font-bold text-rose-900 flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> บันทึกรายการรายจ่าย
+                </h3>
+                <form id="addExpenseForm" onsubmit="handleAddExpense(event)" class="space-y-2">
+                    <div class="flex gap-2">
+                        <input type="text" id="expenseTitle" placeholder="รายการจ่าย (เช่น ค่าถ่ายเอกสาร)..." required class="flex-1 px-3 py-1.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <input type="number" id="expenseAmount" min="1" placeholder="จำนวนเงิน (บาท)..." required class="w-32 px-3 py-1.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="url" id="expenseSlipUrl" placeholder="ลิงก์รูปสลิป/ใบเสร็จ (URL)..." required class="flex-1 px-3 py-1.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-4 py-1.5 rounded-xl transition">
+                            บันทึกรายจ่าย
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
-        <!-- Main Data Table -->
+        <!-- Section 1: รายชื่อสมาชิกและการชำระเงิน (รายรับ) -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-4 border-b border-slate-100 flex justify-between items-center gap-4 flex-wrap">
                 <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-indigo-600"></i> รายชื่อและการชำระเงิน
+                    <i class="fa-solid fa-users text-indigo-600"></i> รายชื่อและการชำระเงิน (รายรับ)
                 </h2>
                 <input type="text" id="searchInput" oninput="renderTable()" placeholder="ค้นหารายชื่อ..." class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
@@ -81,9 +111,9 @@
                 <table class="w-full text-left text-sm">
                     <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
                         <tr>
-                            <th class="p-4">ชื่อ-นามสกุล</th>
+                            <th class="p-4">ชื่อสมาชิก</th>
                             <th class="p-4 text-center">สถานะ</th>
-                            <th class="p-4">ความคืบหน้า</th>
+                            <th class="p-4">ความคืบหน้า (เป้าหมาย 100฿)</th>
                             <th class="p-4 text-center">ยอดชำระแล้ว</th>
                             <th class="p-4 text-center">หลักฐานสลิป</th>
                             <th class="p-4 text-center admin-only hidden">จัดการ (Admin)</th>
@@ -96,24 +126,68 @@
             </div>
         </div>
 
+        <!-- Section 2: ประวัติรายการรายจ่าย -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100">
+                <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-rose-600"></i> ประวัติรายการรายจ่ายของสาขา
+                </h2>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 font-semibold border-b">
+                        <tr>
+                            <th class="p-4">รายการ</th>
+                            <th class="p-4">วันที่ / เวลา</th>
+                            <th class="p-4 text-center">จำนวนเงิน</th>
+                            <th class="p-4 text-center">หลักฐาน/สลิป</th>
+                            <th class="p-4 text-center admin-only hidden">จัดการ (Admin)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseTableBody" class="divide-y divide-slate-100">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </main>
 
     <!-- Modal: Admin Password Input -->
     <div id="passwordModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <h3 class="text-lg font-bold text-slate-800 mb-2">ยืนยันตัวตน Admin</h3>
-            <p class="text-xs text-slate-500 mb-4">กรุณากรอกรหัสผ่านเพื่อเข้าสู่โหมดแก้ไขข้อมูล (รหัสเริ่มต้น: 1234)</p>
+            <p class="text-xs text-slate-500 mb-4">กรุณากรอกรหัสผ่านเพื่อเข้าสู่โหมดจัดการข้อมูล</p>
             <form onsubmit="handleAdminLogin(event)" class="space-y-4">
                 <input type="password" id="adminPasswordInput" placeholder="กรอกรหัสผ่าน..." class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg tracking-widest" required>
                 <div class="flex gap-2">
-                    <button type="button" onclick="toggleAdminModal()" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">ยกเลิก</button>
+                    <button type="button" onclick="toggleAdminModal()" class="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium">ยกเลิก</button>
                     <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium">ตกลง</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal: Add Payment & Slip (Admin Only) -->
+    <!-- Modal: Edit Member Name -->
+    <div id="editMemberModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 class="text-lg font-bold text-slate-800 mb-2">แก้ไขชื่อสมาชิก</h3>
+            <form onsubmit="handleSaveEditMember(event)" class="space-y-4">
+                <input type="hidden" id="editMemberId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ชื่อใหม่</label>
+                    <input type="text" id="editMemberNameInput" class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeEditMemberModal()" class="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium">ยกเลิก</button>
+                    <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Payment (Income) -->
     <div id="paymentModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <h3 class="text-lg font-bold text-slate-800 mb-1">บันทึกการชำระเงิน</h3>
@@ -128,7 +202,6 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1">ลิงก์รูปสลิปการโอน (URL Image)</label>
                     <input type="url" id="paymentSlipUrl" placeholder="https://..." class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                    <p class="text-[10px] text-slate-400 mt-1">* สามารถนำรูปสลิปไปฝากไว้ที่เว็บฝากรูปฟรี เช่น imgbb.com แล้วนำลิงก์รูปมาวางที่นี่</p>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="closePaymentModal()" class="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium">ยกเลิก</button>
@@ -138,21 +211,21 @@
         </div>
     </div>
 
-    <!-- Modal: View Slips (Visitor & Admin View) -->
+    <!-- Modal: View Slips & Receipts -->
     <div id="viewSlipsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[85vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
-                <h3 id="viewSlipsTitle" class="text-lg font-bold text-slate-800">ประวัติสลิปการชำระเงิน</h3>
+                <h3 id="viewSlipsTitle" class="text-lg font-bold text-slate-800">หลักฐานสลิป / ใบเสร็จ</h3>
                 <button onclick="closeViewSlipsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <div id="slipsContainer" class="space-y-4 overflow-y-auto flex-1 pr-1">
-                <!-- Slips list -->
+                <!-- Loaded dynamically -->
             </div>
         </div>
     </div>
 
     <script>
-        // 1. Firebase Configuration (ดึงค่าอัตโนมัติจากคอนโซลของคุณ)
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDHmbMrIq0ma3ecw3lGbhPV7qa7y0UfKkQ",
             authDomain: "iptm23.firebaseapp.com",
@@ -168,19 +241,58 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const membersRef = database.ref('members');
+        const expensesRef = database.ref('expenses');
 
         let membersData = {};
+        let expensesData = {};
         let isAdmin = false;
-        const ADMIN_PIN = "IPTM23"; // << รหัสผ่าน Admin (เปลี่ยนตรงนี้ได้ตามต้องการ)
+        const ADMIN_PIN = "1234"; // << รหัสผ่าน Admin
 
-        // Listen for Realtime Updates from Firebase
+        // Listeners for Realtime Database
         membersRef.on('value', (snapshot) => {
             membersData = snapshot.val() || {};
             renderTable();
             updateStats();
         });
 
-        // App Logic
+        expensesRef.on('value', (snapshot) => {
+            expensesData = snapshot.val() || {};
+            renderExpensesTable();
+            updateStats();
+        });
+
+        // สรุปยอดรวมและเงินคงเหลือ
+        function updateStats() {
+            let totalIncome = 0;
+            let paidCount = 0;
+            let pendingCount = 0;
+            const memberKeys = Object.keys(membersData);
+
+            memberKeys.forEach(id => {
+                const paid = membersData[id].totalPaid || 0;
+                totalIncome += paid;
+                if (paid >= 100) paidCount++;
+                else pendingCount++;
+            });
+
+            let totalExpense = 0;
+            const expenseKeys = Object.keys(expensesData);
+            expenseKeys.forEach(id => {
+                totalExpense += parseInt(expensesData[id].amount || 0);
+            });
+
+            const balance = totalIncome - totalExpense;
+
+            document.getElementById('statTotalIncome').innerText = `${totalIncome.toLocaleString()} ฿`;
+            document.getElementById('statTotalExpense').innerText = `${totalExpense.toLocaleString()} ฿`;
+            document.getElementById('statBalance').innerText = `${balance.toLocaleString()} ฿`;
+            
+            document.getElementById('statPaidCount').innerText = `จ่ายครบ ${paidCount} / ${memberKeys.length} คน`;
+            document.getElementById('statExpenseCount').innerText = `${expenseKeys.length} รายการ`;
+            document.getElementById('statPendingCount').innerText = `${pendingCount} คน`;
+        }
+
+        // Render รายชื่อสมาชิก (รายรับ)
         function renderTable() {
             const tbody = document.getElementById('memberTableBody');
             const search = document.getElementById('searchInput').value.toLowerCase();
@@ -188,7 +300,7 @@
 
             const keys = Object.keys(membersData);
             if (keys.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">ยังไม่มีรายชื่อสมาชิก (Admin กดเพิ่มรายชื่อได้ด้านบน)</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">ยังไม่มีรายชื่อสมาชิก</td></tr>`;
                 return;
             }
 
@@ -221,14 +333,22 @@
                         <td class="p-4 text-center font-bold text-slate-700">${paid} / 100 ฿</td>
                         <td class="p-4 text-center">
                             ${slipCount > 0 
-                                ? `<button onclick="openViewSlipsModal('${id}')" class="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold px-2.5 py-1 rounded-lg transition"><i class="fa-solid fa-receipt"></i> ดูสลิป (${slipCount})</button>`
+                                ? `<button onclick="openViewSlipsModal('${id}', 'member')" class="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold px-2.5 py-1 rounded-lg transition"><i class="fa-solid fa-receipt"></i> สลิป (${slipCount})</button>`
                                 : `<span class="text-xs text-slate-400">ไม่มีสลิป</span>`
                             }
                         </td>
                         <td class="p-4 text-center admin-only ${isAdmin ? '' : 'hidden'}">
-                            <button onclick="openPaymentModal('${id}', '${member.name}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition">
-                                + ชำระเงิน
-                            </button>
+                            <div class="flex items-center justify-center gap-1.5">
+                                <button onclick="openPaymentModal('${id}', '${member.name}')" title="ชำระเงิน" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 py-1 rounded-lg font-medium transition">
+                                    + เงิน
+                                </button>
+                                <button onclick="openEditMemberModal('${id}', '${member.name}')" title="แก้ไขชื่อ" class="bg-slate-100 hover:bg-amber-500 hover:text-white text-slate-600 text-xs p-1.5 rounded-lg transition">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteMember('${id}', '${member.name}')" title="ลบสมาชิก" class="bg-slate-100 hover:bg-rose-600 hover:text-white text-slate-600 text-xs p-1.5 rounded-lg transition">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -236,69 +356,106 @@
             });
         }
 
-        function updateStats() {
-            let totalIncome = 0;
-            let paidCount = 0;
-            let pendingCount = 0;
-            const keys = Object.keys(membersData);
+        // Render ตารางรายการรายจ่าย
+        function renderExpensesTable() {
+            const tbody = document.getElementById('expenseTableBody');
+            tbody.innerHTML = '';
+
+            const keys = Object.keys(expensesData);
+            if (keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">ยังไม่มีการบันทึกรายการรายจ่าย</td></tr>`;
+                return;
+            }
 
             keys.forEach(id => {
-                const paid = membersData[id].totalPaid || 0;
-                totalIncome += paid;
-                if (paid >= 100) paidCount++;
-                else pendingCount++;
+                const exp = expensesData[id];
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-slate-800">${exp.title}</td>
+                    <td class="p-4 text-xs text-slate-500">${exp.timestamp}</td>
+                    <td class="p-4 text-center font-bold text-rose-600">-${parseInt(exp.amount).toLocaleString()} ฿</td>
+                    <td class="p-4 text-center">
+                        <button onclick="openViewExpenseSlipModal('${exp.url}', '${exp.title}')" class="text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 font-semibold px-2.5 py-1 rounded-lg transition">
+                            <i class="fa-solid fa-file-invoice"></i> ดูหลักฐาน
+                        </button>
+                    </td>
+                    <td class="p-4 text-center admin-only ${isAdmin ? '' : 'hidden'}">
+                        <button onclick="deleteExpense('${id}', '${exp.title}')" title="ลบรายการ" class="bg-slate-100 hover:bg-rose-600 hover:text-white text-slate-600 text-xs p-1.5 rounded-lg transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
             });
-
-            document.getElementById('statTotalIncome').innerText = `${totalIncome.toLocaleString()} ฿`;
-            document.getElementById('statPaidCount').innerText = `${paidCount} / ${keys.length} คน`;
-            document.getElementById('statPendingCount').innerText = `${pendingCount} คน`;
         }
 
-        // Admin Auth
-        function toggleAdminModal() {
-            document.getElementById('passwordModal').classList.toggle('hidden');
-            document.getElementById('passwordModal').classList.toggle('flex');
-        }
-
-        function handleAdminLogin(e) {
-            e.preventDefault();
-            const pwd = document.getElementById('adminPasswordInput').value;
-            if (pwd === ADMIN_PIN) {
-                isAdmin = true;
-                document.getElementById('adminLoginBtn').classList.add('hidden');
-                document.getElementById('adminActiveBadge').classList.remove('hidden');
-                document.getElementById('adminPanel').classList.remove('hidden');
-                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-                toggleAdminModal();
-                document.getElementById('adminPasswordInput').value = '';
-                renderTable();
-            } else {
-                alert('รหัสผ่านไม่ถูกต้อง!');
-            }
-        }
-
-        function logoutAdmin() {
-            isAdmin = false;
-            document.getElementById('adminLoginBtn').classList.remove('hidden');
-            document.getElementById('adminActiveBadge').classList.add('hidden');
-            document.getElementById('adminPanel').classList.add('hidden');
-            document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
-            renderTable();
-        }
-
-        // Add Member
+        // Action Handlers for Members
         function handleAddMember(e) {
             e.preventDefault();
             const nameInput = document.getElementById('newMemberName');
             const name = nameInput.value.trim();
             if (name) {
-                const newRef = membersRef.push();
-                newRef.set({ name: name, totalPaid: 0 });
+                membersRef.push({ name: name, totalPaid: 0 });
                 nameInput.value = '';
             }
         }
 
-        // Payment & Slip Handling
+        function openEditMemberModal(id, currentName) {
+            document.getElementById('editMemberId').value = id;
+            document.getElementById('editMemberNameInput').value = currentName;
+            document.getElementById('editMemberModal').classList.remove('hidden');
+            document.getElementById('editMemberModal').classList.add('flex');
+        }
+
+        function closeEditMemberModal() {
+            document.getElementById('editMemberModal').classList.add('hidden');
+            document.getElementById('editMemberModal').classList.remove('flex');
+        }
+
+        function handleSaveEditMember(e) {
+            e.preventDefault();
+            const id = document.getElementById('editMemberId').value;
+            const newName = document.getElementById('editMemberNameInput').value.trim();
+            if (newName && id) {
+                membersRef.child(id).update({ name: newName });
+                closeEditMemberModal();
+            }
+        }
+
+        function deleteMember(id, name) {
+            if (confirm(`คุณต้องการลบรายชื่อ "${name}" ออกจากระบบใช่หรือไม่?`)) {
+                membersRef.child(id).remove();
+            }
+        }
+
+        // Action Handlers for Expenses
+        function handleAddExpense(e) {
+            e.preventDefault();
+            const title = document.getElementById('expenseTitle').value.trim();
+            const amount = parseInt(document.getElementById('expenseAmount').value);
+            const url = document.getElementById('expenseSlipUrl').value.trim();
+
+            if (title && amount && url) {
+                expensesRef.push({
+                    title: title,
+                    amount: amount,
+                    url: url,
+                    timestamp: new Date().toLocaleString('th-TH')
+                });
+                document.getElementById('expenseTitle').value = '';
+                document.getElementById('expenseAmount').value = '';
+                document.getElementById('expenseSlipUrl').value = '';
+            }
+        }
+
+        function deleteExpense(id, title) {
+            if (confirm(`คุณต้องการลบรายการรายจ่าย "${title}" ใช่หรือไม่?`)) {
+                expensesRef.child(id).remove();
+            }
+        }
+
+        // Payment (Income) Modal Logic
         function openPaymentModal(id, name) {
             document.getElementById('paymentMemberId').value = id;
             document.getElementById('paymentTargetName').innerText = `สมาชิก: ${name}`;
@@ -320,7 +477,6 @@
             const currentPaid = membersData[id].totalPaid || 0;
             const newTotal = currentPaid + amount;
 
-            // Save to Firebase
             membersRef.child(id).update({ totalPaid: newTotal });
             membersRef.child(id).child('slips').push({
                 amount: amount,
@@ -333,9 +489,10 @@
             document.getElementById('paymentSlipUrl').value = '';
         }
 
+        // Slip Viewers
         function openViewSlipsModal(id) {
             const member = membersData[id];
-            document.getElementById('viewSlipsTitle').innerText = `สลิปของ: ${member.name}`;
+            document.getElementById('viewSlipsTitle').innerText = `สลิปการชำระเงิน: ${member.name}`;
             const container = document.getElementById('slipsContainer');
             container.innerHTML = '';
 
@@ -349,12 +506,23 @@
                             <span>จำนวนเงิน: ${slip.amount} ฿</span>
                             <span class="text-slate-400">${slip.timestamp}</span>
                         </div>
-                        <img src="${slip.url}" alt="สลิปโอนเงิน" class="w-full max-h-64 object-contain rounded-lg border bg-white" onerror="this.src='https://via.placeholder.com/400x300?text=ไม่สามารถโหลดรูปได้'">
+                        <img src="${slip.url}" alt="สลิป" class="w-full max-h-64 object-contain rounded-lg border bg-white" onerror="this.src='https://via.placeholder.com/400x300?text=ไม่สามารถโหลดรูปได้'">
                     `;
                     container.appendChild(div);
                 });
             }
+            document.getElementById('viewSlipsModal').classList.remove('hidden');
+            document.getElementById('viewSlipsModal').classList.add('flex');
+        }
 
+        function openViewExpenseSlipModal(url, title) {
+            document.getElementById('viewSlipsTitle').innerText = `ใบเสร็จ: ${title}`;
+            const container = document.getElementById('slipsContainer');
+            container.innerHTML = `
+                <div class="border rounded-xl p-3 bg-slate-50">
+                    <img src="${url}" alt="หลักฐานรายจ่าย" class="w-full max-h-80 object-contain rounded-lg border bg-white" onerror="this.src='https://via.placeholder.com/400x300?text=ไม่สามารถโหลดรูปได้'">
+                </div>
+            `;
             document.getElementById('viewSlipsModal').classList.remove('hidden');
             document.getElementById('viewSlipsModal').classList.add('flex');
         }
@@ -362,6 +530,40 @@
         function closeViewSlipsModal() {
             document.getElementById('viewSlipsModal').classList.add('hidden');
             document.getElementById('viewSlipsModal').classList.remove('flex');
+        }
+
+        // Admin Auth Logic
+        function toggleAdminModal() {
+            document.getElementById('passwordModal').classList.toggle('hidden');
+            document.getElementById('passwordModal').classList.toggle('flex');
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const pwd = document.getElementById('adminPasswordInput').value;
+            if (pwd === ADMIN_PIN) {
+                isAdmin = true;
+                document.getElementById('adminLoginBtn').classList.add('hidden');
+                document.getElementById('adminActiveBadge').classList.remove('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                toggleAdminModal();
+                document.getElementById('adminPasswordInput').value = '';
+                renderTable();
+                renderExpensesTable();
+            } else {
+                alert('รหัสผ่านไม่ถูกต้อง!');
+            }
+        }
+
+        function logoutAdmin() {
+            isAdmin = false;
+            document.getElementById('adminLoginBtn').classList.remove('hidden');
+            document.getElementById('adminActiveBadge').classList.add('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+            renderTable();
+            renderExpensesTable();
         }
     </script>
 </body>
